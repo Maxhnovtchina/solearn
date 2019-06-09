@@ -96,6 +96,9 @@ body, html {
 }
 
 /*------------------------- Production ------------------------*/
+.fa-spinner {
+  color: #505050;
+}
 .fa-chevron-circle-up {
   color: #bfff00;
 }
@@ -340,14 +343,7 @@ h3 {
   }
 
 /*-- Data --*/
-  canvas {
-  top: 0;
-  left: 0;
-  right: 0;
-  width: 100%;
-  height: 100%;
-  padding-top: 0px;
-  }
+
 /*-- Converter --*/
   .caption_converter {
   left: 5%;
@@ -392,11 +388,9 @@ h3 {
   height: 20px;
   }
 }
-
-/*------------------------- Other -------------------------*/
 </style>
 </head>
-<body onload="convert();today();data(calendar.value);">
+<body onload="convert();today();data(calendar.value, 0);show_actual_values()">
 
 <!-- Add icon library -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
@@ -455,7 +449,7 @@ h3 {
   </div>
 </div>
 <div class="center" style="background:#404040;">
-<input type="date" id="calendar" oninput="data(calendar.value)" value="today" style="margin-right:10px;">
+<input type="date" id="calendar" oninput="data(calendar.value, 1)" value="today" style="margin-right:10px;">
 <a href="path_csv" download="" id="dl_a" style="text-decoration:none;font-size:40px"><i id="button_dl" class="fa fa-download" style="font-size:40px"></i></a>
 </div>
 
@@ -473,13 +467,13 @@ h3 {
     <a onclick="convert()" style="font-size:40px"> <i class="fa fa-refresh fa-spin"></i></a><br>
     <!-- time home appliances -->
     <a onclick="decrease_count1()" style="font-size:40px"> <i class="fa fa-angle-left"></i></a>
-    <a id="c1">Home appliances</a>
+    <a id="counter_home_appliances">Home appliances</a>
     <a onclick="increase_count1()" style="font-size:40px"> <i class="fa fa-angle-right"></i></a><br>
     <!-- & -->
       <a style="color: #EDC00E;font-size:36px;">&</a><br>
     <!-- CO² saved -->
     <a onclick="decrease_count2()" style="font-size:40px"> <i class="fa fa-angle-left"></i></a>
-    <a id="c2">Particles saved</a>
+    <a id="counter_particles">Particles saved</a>
     <a onclick="increase_count2()" style="font-size:40px"> <i class="fa fa-angle-right"></i></a>
     </div>
   </div>
@@ -508,8 +502,8 @@ h3 {
   <span class="border_sn">SHARE IT TO THE WORLD</span>
   </div>
   <div id="sn">
-    <a href="http://www.facebook.com/sharer.php?u=<https://solearn2019.000webhostapp.com>&t=<Find out how much solar energy you can produce on:>"><i class="fa fa-facebook"></i></a>
-    <a href="http://twitter.com/intent/tweet?status=Find out how much solar energy you can produce on: https://solearn2019.000webhostapp.com/"><i class="fa fa-twitter"></i></a>
+    <a href="https://www.facebook.com/sharer/sharer.php?u=https%3A//solearn2019.000webhostapp.com"><i class="fa fa-facebook"></i></a>
+    <a id="twitter_link" href=""><i class="fa fa-twitter"></i></a>
   </div>
 </div>
 
@@ -536,20 +530,16 @@ h3 {
 
 <!-- SCRIPTS -->
 <script>
-function popup2() {
-  window.alert('test');;
-}
-
 /*-------------------------------- Power --------------------------------*/
 var actual_temperature = 0;
-var v_old = 0;
-var v_new = 0;
-var values = [0, 0]
-var a = setInterval("test()",500);
-function test() {
+var v_old;
+var v_new;
+var values;
+var a = setInterval("show_actual_values()",1000);
+function show_actual_values() {
   /*-- AJAX --*/
-  var xhttp2 = new XMLHttpRequest();
-  xhttp2.onreadystatechange = function() {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
   if (this.readyState == 4 && this.status == 200) {
      var values = this.responseText;
      var values = values.split(",");
@@ -557,8 +547,8 @@ function test() {
      actual_temperature = values[1];
   }
   }
-  xhttp2.open("GET", "actual_values.txt", true);
-  xhttp2.send();
+  xhttp.open("GET", "actual_values.txt", true);
+  xhttp.send();
   /*-- Temperature --*/
   document.getElementById("actual_temperature").innerHTML = actual_temperature + " °C";
   document.getElementById("actual_temperature").style.color = "white";
@@ -570,9 +560,13 @@ function test() {
   if (v_new > v_old){
     document.getElementById("arrow").className = "fa fa-chevron-circle-up";
   } else {
-    document.getElementById("arrow").className = "fa fa-chevron-circle-down";
+    if (v_new < v_old){
+      document.getElementById("arrow").className = "fa fa-chevron-circle-down";
+    } else {
+      document.getElementById("arrow").className = "fa fa-spinner fa-spin";
+    }
   }
-  v_old = v_new ;
+  v_old = v_new;
 }
 
 /*----------------------- Data -----------------------*/
@@ -678,20 +672,17 @@ function today() {
 var data_csv = "";
 var data_power = [];
 var data_date = [];
-function data(str){
+function data(str, p){
   data_power = [];
   data_date = [];
-
-
   if (typeof(chart) != "undefined") {
     chart.destroy();
   }
-
   var xmlhttp = new XMLHttpRequest();
   xmlhttp.onreadystatechange = function() {
   if (this.readyState == 4 && this.status == 200) {
     if (this.responseText == "No data for this day.") {
-      window.alert("No data for the day "+calendar.value);;
+      if (p == 1) window.alert("No data for the day "+calendar.value);;
       var x = document.getElementById("button_dl");
       x.style.display = "none";
     } else {
@@ -744,8 +735,6 @@ function data(str){
   xmlhttp.send();
 }
 
-
-
 /*-------------------------------- Converter--------------------------------*/
 var count1 = 0;
 var count2 = 0;
@@ -755,74 +744,73 @@ function convert() {
   var time = document.getElementById('in_time').value;
   var energy = time * power;
   var energy = ~~ energy;
-
   /*---- conversion home appliances ----*/
   if (count1 == 0) {
   var power_ha = 400;
   var t_ha = energy / power_ha;
   var t_ha = min_hour(t_ha);
-  document.getElementById("c1").innerHTML = t_ha + " of use of a fridge / freezer";
+  document.getElementById("counter_home_appliances").innerHTML = t_ha + " of use of a fridge / freezer";
   }
   if (count1 == 1) {
   var power_ha = 150;
   var t_ha = energy / power_ha;
   var t_ha = min_hour(t_ha);
-  document.getElementById("c1").innerHTML = t_ha + " of use of a 25'' TV";
+  document.getElementById("counter_home_appliances").innerHTML = t_ha + " of use of a 25'' TV";
   }
   if (count1 == 2) {
   var power_ha = 1400;
   var t_ha = energy / power_ha;
   var t_ha = min_hour(t_ha);
-  document.getElementById("c1").innerHTML = t_ha + " of use of a dishwasher";
+  document.getElementById("counter_home_appliances").innerHTML = t_ha + " of use of a dishwasher";
   }
   if (count1 == 3) {
   var power_ha = 400;
   var t_ha = energy / power_ha;
   var t_ha = min_hour(t_ha);
-  document.getElementById("c1").innerHTML = t_ha + " of use of a desktop computer";
+  document.getElementById("counter_home_appliances").innerHTML = t_ha + " of use of a desktop computer";
   }
   if (count1 == 4) {
   var power_ha = 110;
   var t_ha = energy / power_ha;
   var t_ha = min_hour(t_ha);
-  document.getElementById("c1").innerHTML = t_ha + " of use of a laptop";
+  document.getElementById("counter_home_appliances").innerHTML = t_ha + " of use of a laptop";
   }
   if (count1 == 5) {
   var power_ha = 8;
   var t_ha = energy / power_ha;
   var t_ha = min_hour(t_ha);
-  document.getElementById("c1").innerHTML = t_ha + " of use of a phone charger";
+  document.getElementById("counter_home_appliances").innerHTML = t_ha + " of use of a phone charger";
   }
   /*---- conversion particles ----*/
   if (count2 == 0) {
   var coef = 0.353;
   var prevented = power * coef * time;
   var prevented = ~~ prevented;
-  document.getElementById("c2").innerHTML = prevented + "kg of CO²";
+  document.getElementById("counter_particles").innerHTML = prevented + "kg of CO²";
   }
   if (count2 == 1) {
   var coef = 0.000245;
   var prevented = power * coef * time;
   var prevented = prevented.toFixed(2);
-  document.getElementById("c2").innerHTML = prevented + "kg of SO²";
+  document.getElementById("counter_particles").innerHTML = prevented + "kg of SO²";
   }
   if (count2 == 2) {
   var coef = 0.00065;
   var prevented = power * coef * time;
   var prevented = prevented.toFixed(2);
-  document.getElementById("c2").innerHTML = prevented + "kg of nitrogen compounds";
+  document.getElementById("counter_particles").innerHTML = prevented + "kg of nitrogen compounds";
   }
   if (count2 == 3) {
   var coef = 0.00082;
   var prevented = power * coef * time;
   var prevented = prevented.toFixed(2);
-  document.getElementById("c2").innerHTML = prevented + "kg of CO";
+  document.getElementById("counter_particles").innerHTML = prevented + "kg of CO";
   }
   if (count2 == 4) {
   var coef = 0.00044;
   var prevented = power * coef * time;
   var prevented = prevented.toFixed(2);
-  document.getElementById("c2").innerHTML = prevented + "kg of particulates";
+  document.getElementById("counter_particles").innerHTML = prevented + "kg of particulates";
   }
 }
 function min_hour(t) {
@@ -848,26 +836,25 @@ function increase_count1() {
   count1 = count1 +1;
   if (count1 > 5) count1 = 0;
   convert()
-  document.getElementById("test3").innerHTML = count1;
 }
 function decrease_count1() {
   count1 = count1 -1;
   if (count1 < 0) count1 = 5;
   convert()
-  document.getElementById("test3").innerHTML = count1;
 }
 function increase_count2() {
   count2 = count2 +1;
   if (count2 > 4) count2 = 0;
   convert()
-  document.getElementById("test4").innerHTML = count2;
 }
 function decrease_count2() {
   count2 = count2 -1;
   if (count2 < 0) count2 = 4;
   convert()
-  document.getElementById("test4").innerHTML = count2;
 }
+
+/*-------------------------------- Social Networks --------------------------------*/
+document.getElementById("twitter_link").href = "http://twitter.com/intent/tweet?status=Find out how much solar energy you can produce on: https://solearn2019.000webhostapp.com/";
 
 </script>
 </body>
